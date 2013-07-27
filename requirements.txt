@@ -1,0 +1,2 @@
+Twisted==13.1.0
+qt4reactor==1.0
