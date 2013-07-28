@@ -2,6 +2,7 @@ import sys
 import signal
 
 from PySide import QtGui
+from MulticastServer import MulticastPingPong, MULTICAST_ADDR
 
 from utils import get_log_handler
 logger = get_log_handler(__name__)
@@ -17,6 +18,7 @@ class SplashWindow(QtGui.QWidget):
         # Nodes list
         self._nodes_list = QtGui.QListWidget(self)
         self._nodes_list.itemDoubleClicked.connect(self.on_item_doubleclicked)
+        self.add_demo_nodes()
 
         # Quit button
         pbQuit = QtGui.QPushButton('Quit')
@@ -30,6 +32,21 @@ class SplashWindow(QtGui.QWidget):
         # Connections
         pbQuit.clicked.connect(self.close)
 
+        # Multicast
+        self._start_listening()
+
+    def _start_listening(self):
+        from twisted.internet import reactor
+
+        # Multicast Server
+        self._pingpong = MulticastPingPong()
+        port = MULTICAST_ADDR[1]
+
+        reactor.listenMulticast(port, self._pingpong, listenMultiple=True)
+        reactor.runReturn()
+        self._pingpong.got_client.connect(self.add_nodes)
+        self._pingpong.got_message.connect(self.display_incoming_message)
+
     def add_nodes(self, nodes):
         """
         Add a list of nodes to the list.
@@ -37,6 +54,7 @@ class SplashWindow(QtGui.QWidget):
         :param nodes: a list of nodes
         :type nodes: list of str
         """
+        logger.debug('Adding nodes: %s' % nodes)
         for node in nodes:
             item = QtGui.QListWidgetItem(node)
             count = self._nodes_list.count()
@@ -48,11 +66,6 @@ class SplashWindow(QtGui.QWidget):
 
     def display_incoming_message(self, msg):
         QtGui.QMessageBox.information(self, 'Incoming Message', msg)
-        # msgBox = QtGui.QMessageBox()
-        # msgBox.setText('Incoming Message')
-        # msgBox.setInformativeText(msg)
-        # msgBox.setIcon(QtGui.QMessageBox.Information)
-        # msgBox.exec_()
 
     def on_item_doubleclicked(self, item):
         node = item.text()
@@ -60,7 +73,7 @@ class SplashWindow(QtGui.QWidget):
         question = 'Input the message to send to the node'
         msg, ok = self.ask_user('Input message', question)
         if ok:
-            self.display_incoming_message(msg)
+            self._pingpong.send_message(msg)
 
     def add_demo_nodes(self):
         demo_nodes = ['Demo node 01', 'Demo node 02', 'Demo node 03',
@@ -71,6 +84,8 @@ class SplashWindow(QtGui.QWidget):
         """
         Reimplementation of closeEvent to add actions before quit.
         """
+        from twisted.internet import reactor
+        reactor.stop()
         logger.debug('Quit app')
         QtGui.QMainWindow.closeEvent(self, e)
 
