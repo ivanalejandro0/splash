@@ -25,6 +25,7 @@ class SplashWindow(QtGui.QWidget):
         # Connections
         self.ui.pbRefresh.clicked.connect(self.refresh_nodes)
         self.ui.pbQuit.clicked.connect(self.close)
+        self.ui.twNodes.itemDoubleClicked.connect(self.on_item_doubleclicked)
 
         # Multicast
         self._start_listening()
@@ -76,11 +77,15 @@ class SplashWindow(QtGui.QWidget):
 
     def on_item_doubleclicked(self, item):
         node = item.text()
-        logger.debug('Node clicked: {0}'.format(node))
+        row = self.ui.twNodes.selectedItems()
+        ip = row[1].text()
+        port = int(row[2].text())
+        address = (ip, port)
+        logger.debug('Node clicked: {0}, address: {1}'.format(node, address))
         question = 'Input the message to send to the node'
         msg, ok = self.ask_user('Input message', question)
         if ok:
-            self._pingpong.send_message(msg)
+            self._pingpong.send_message(msg, address)
 
     def add_demo_nodes(self):
         demo_nodes = ['Demo node 01', 'Demo node 02', 'Demo node 03',
