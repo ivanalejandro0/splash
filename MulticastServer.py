@@ -16,7 +16,7 @@ class ClientEmitter(QtCore.QObject):
     Because the twisted class does not inherits from 'object', we can not
     use multiple inheritance mixing twisted's classes and PySide ones.
     """
-    got_client = QtCore.Signal(list)
+    got_client = QtCore.Signal(str, int)
     got_message = QtCore.Signal(str)
 
 
@@ -33,7 +33,13 @@ class MulticastPingPong(DatagramProtocol):
         # Join a specific multicast group:
         self.transport.joinGroup(MULTICAST_ADDR[0])
 
-        # Send "i'm here!"
+        self.send_alive()
+
+    def send_alive(self):
+        """
+        Sends a multicast signal asking for clients.
+        The receivers will reply if they want to be found.
+        """
         self.transport.write(CMD_PING, MULTICAST_ADDR)
 
     def datagramReceived(self, datagram, address):
@@ -45,7 +51,7 @@ class MulticastPingPong(DatagramProtocol):
             self.transport.write(CMD_PONG, address)
         elif datagram.startswith(CMD_PONG):
             # someone reply to our publish message
-            self.got_client.emit([repr(address)])
+            self.got_client.emit(address[0], address[1])
         elif datagram.startswith(CMD_MSG):
             # someone sent us a message
             msg = datagram.lstrip(CMD_MSG)

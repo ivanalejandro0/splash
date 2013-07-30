@@ -7,30 +7,24 @@ from MulticastServer import MulticastPingPong, MULTICAST_ADDR
 from utils import get_log_handler
 logger = get_log_handler(__name__)
 
+from ui.splashUi import Ui_SplashWindow
+
 
 class SplashWindow(QtGui.QWidget):
     def __init__(self):
         QtGui.QWidget.__init__(self)
 
-        self.setWindowTitle('Splash!')
-        self.setMinimumSize(200, 400)
+        # Create and setup the UI
+        self.ui = Ui_SplashWindow()
+        self.ui.setupUi(self)
 
-        # Nodes list
-        self._nodes_list = QtGui.QListWidget(self)
-        self._nodes_list.itemDoubleClicked.connect(self.on_item_doubleclicked)
-        self.add_demo_nodes()
-
-        # Quit button
-        pbQuit = QtGui.QPushButton('Quit')
-
-        # Layout
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self._nodes_list)
-        layout.addWidget(pbQuit)
-        self.setLayout(layout)
+        # Custom UI settings
+        self.ui.twNodes.horizontalHeader().setResizeMode(
+            0, QtGui.QHeaderView.Stretch)
 
         # Connections
-        pbQuit.clicked.connect(self.close)
+        self.ui.pbRefresh.clicked.connect(self.refresh_nodes)
+        self.ui.pbQuit.clicked.connect(self.close)
 
         # Multicast
         self._start_listening()
@@ -44,21 +38,34 @@ class SplashWindow(QtGui.QWidget):
 
         reactor.listenMulticast(port, self._pingpong, listenMultiple=True)
         reactor.runReturn()
-        self._pingpong.got_client.connect(self.add_nodes)
+        self._pingpong.got_client.connect(self.add_node)
         self._pingpong.got_message.connect(self.display_incoming_message)
 
-    def add_nodes(self, nodes):
+    def add_node(self, ip, port):
         """
-        Add a list of nodes to the list.
+        Add a node to the list.
 
-        :param nodes: a list of nodes
-        :type nodes: list of str
+        :param node: a nodes to add.
+        :type node: tuple(str, int)
         """
-        logger.debug('Adding nodes: %s' % nodes)
-        for node in nodes:
-            item = QtGui.QListWidgetItem(node)
-            count = self._nodes_list.count()
-            self._nodes_list.insertItem(count, item)
+        node = "(%s, %d)" % (ip, port)
+        logger.debug('Adding node: %s' % node)
+
+        row = self.ui.twNodes.rowCount()
+        self.ui.twNodes.insertRow(row)
+        self.ui.twNodes.setItem(row, 0, QtGui.QTableWidgetItem(node))
+        self.ui.twNodes.setItem(row, 1, QtGui.QTableWidgetItem(ip))
+        self.ui.twNodes.setItem(row, 2, QtGui.QTableWidgetItem(str(port)))
+
+    def refresh_nodes(self):
+        """
+        Refresh the node list sending a new multicast message.
+        """
+        # empty table
+        for r in xrange(self.ui.twNodes.rowCount()):
+            self.ui.twNodes.removeRow(0)
+
+        self._pingpong.send_alive()
 
     def ask_user(self, title='', question=''):
         response, ok = QtGui.QInputDialog.getText(None, title, question)
@@ -78,7 +85,8 @@ class SplashWindow(QtGui.QWidget):
     def add_demo_nodes(self):
         demo_nodes = ['Demo node 01', 'Demo node 02', 'Demo node 03',
                       'Demo node 04', 'Demo node 05']
-        self.add_nodes(demo_nodes)
+        for node in demo_nodes:
+            self.add_node(node)
 
     def closeEvent(self, e):
         """
