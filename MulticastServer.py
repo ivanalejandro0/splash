@@ -7,7 +7,7 @@ logger = get_log_handler(__name__)
 MULTICAST_ADDR = ('228.0.0.5', 8005)
 CMD_PING = "PING"
 CMD_PONG = "PONG"
-CMD_MSG = "MSG"
+CMD_MSG = "MSG:"
 
 
 class ClientEmitter(QtCore.QObject):
