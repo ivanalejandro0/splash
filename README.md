@@ -12,5 +12,5 @@ Run this commands in splash directory:
     setvirtualenvproject (optional)
     pip install -r requirements.txt
     ./pyside-to-virtualenv.sh
-    (cd ui/; pyside-uic splash.ui > ui_splash.py)
+    python setup.py build_qt
     python splash.py
