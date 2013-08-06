@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+# encoding: utf-8
 import sys
 import signal
 
 from PySide import QtGui
 from MulticastServer import MulticastPingPong, MULTICAST_ADDR
+from twisted.internet.task import LoopingCall
 
 from utils import get_log_handler
 logger = get_log_handler(__name__)
@@ -11,6 +14,8 @@ from ui.ui_splash import Ui_SplashWindow
 
 
 class SplashWindow(QtGui.QWidget):
+    _auto_refresh_delay = 2
+
     def __init__(self):
         QtGui.QWidget.__init__(self)
 
@@ -23,12 +28,16 @@ class SplashWindow(QtGui.QWidget):
             0, QtGui.QHeaderView.Stretch)
 
         # Connections
-        self.ui.pbRefresh.clicked.connect(self.refresh_nodes)
+        self.ui.pbAutoRefresh.clicked.connect(self.toggle_autorefresh)
         self.ui.pbQuit.clicked.connect(self.close)
         self.ui.twNodes.itemDoubleClicked.connect(self.on_item_doubleclicked)
 
         # Multicast
         self._start_listening()
+
+        # Automatic refresh
+        self._loop_refresh = LoopingCall(self.refresh_nodes)
+        self.toggle_autorefresh()
 
     def _start_listening(self):
         from twisted.internet import reactor
@@ -41,6 +50,17 @@ class SplashWindow(QtGui.QWidget):
         reactor.runReturn()
         self._pingpong.got_client.connect(self.add_node)
         self._pingpong.got_message.connect(self.display_incoming_message)
+
+    def toggle_autorefresh(self):
+        """
+        SLOT:
+            Toggles the automatic node list refresh.
+        """
+        loop = self._loop_refresh
+        if loop.running:
+            loop.stop()
+        else:
+            loop.start(self._auto_refresh_delay)
 
     def add_node(self, ip, port):
         """
@@ -62,6 +82,7 @@ class SplashWindow(QtGui.QWidget):
         """
         Refresh the node list sending a new multicast message.
         """
+        logger.debug('Refresh nodes list.')
         # empty table
         for r in xrange(self.ui.twNodes.rowCount()):
             self.ui.twNodes.removeRow(0)

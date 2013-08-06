@@ -43,9 +43,15 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="pbRefresh">
+    <widget class="QPushButton" name="pbAutoRefresh">
      <property name="text">
-      <string>&amp;Refresh</string>
+      <string>Auto &amp;Refresh (every 2 sec)</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
