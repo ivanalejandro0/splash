@@ -7,7 +7,7 @@ from MulticastServer import MulticastPingPong, MULTICAST_ADDR
 from utils import get_log_handler
 logger = get_log_handler(__name__)
 
-from ui.splashUi import Ui_SplashWindow
+from ui.ui_splash import Ui_SplashWindow
 
 
 class SplashWindow(QtGui.QWidget):
