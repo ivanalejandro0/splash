@@ -33,8 +33,6 @@ class MulticastPingPong(DatagramProtocol):
         # Join a specific multicast group:
         self.transport.joinGroup(MULTICAST_ADDR[0])
 
-        self.send_alive()
-
     def send_alive(self):
         """
         Sends a multicast signal asking for clients.
