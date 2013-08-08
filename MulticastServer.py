@@ -4,11 +4,6 @@ from twisted.internet.protocol import DatagramProtocol
 from utils import get_log_handler
 logger = get_log_handler(__name__)
 
-MULTICAST_ADDR = ('228.0.0.5', 8005)
-CMD_PING = "PING"
-CMD_PONG = "PONG"
-CMD_MSG = "MSG:"
-
 
 class ClientEmitter(QtCore.QObject):
     """
@@ -21,6 +16,11 @@ class ClientEmitter(QtCore.QObject):
 
 
 class MulticastPingPong(DatagramProtocol):
+    MULTICAST_ADDR = ('228.0.0.5', 8005)
+    CMD_PING = "PING"
+    CMD_PONG = "PONG"
+    CMD_MSG = "MSG:"
+
     def __init__(self):
         self._client_emitter = ClientEmitter()
 
@@ -31,28 +31,28 @@ class MulticastPingPong(DatagramProtocol):
         # Set the TTL>1 so multicast will cross router hops:
         self.transport.setTTL(5)
         # Join a specific multicast group:
-        self.transport.joinGroup(MULTICAST_ADDR[0])
+        self.transport.joinGroup(self.MULTICAST_ADDR[0])
 
     def send_alive(self):
         """
         Sends a multicast signal asking for clients.
         The receivers will reply if they want to be found.
         """
-        self.transport.write(CMD_PING, MULTICAST_ADDR)
+        self.transport.write(self.CMD_PING, self.MULTICAST_ADDR)
 
     def datagramReceived(self, datagram, address):
         logger.debug("Datagram %s received from %s" % (
             repr(datagram), repr(address)))
 
-        if datagram.startswith(CMD_PING):
+        if datagram.startswith(self.CMD_PING):
             # someone publishes itself, we reply that we are here
-            self.transport.write(CMD_PONG, address)
-        elif datagram.startswith(CMD_PONG):
+            self.transport.write(self.CMD_PONG, address)
+        elif datagram.startswith(self.CMD_PONG):
             # someone reply to our publish message
             self.got_client.emit(address[0], address[1])
-        elif datagram.startswith(CMD_MSG):
+        elif datagram.startswith(self.CMD_MSG):
             # someone sent us a message
-            msg = datagram.lstrip(CMD_MSG)
+            msg = datagram.lstrip(self.CMD_MSG)
             self.got_message.emit(msg)
 
     def send_message(self, message, addr=None):
@@ -61,9 +61,9 @@ class MulticastPingPong(DatagramProtocol):
         If we do not supply an address, it will be send to everybody.
         """
         if addr is None:
-            addr = MULTICAST_ADDR
+            addr = self.MULTICAST_ADDR
 
-        message = CMD_MSG + message
+        message = self.CMD_MSG + message
         self.transport.write(message, addr)
 
     @property

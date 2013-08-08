@@ -4,7 +4,7 @@ import sys
 import signal
 
 from PySide import QtGui
-from MulticastServer import MulticastPingPong, MULTICAST_ADDR
+from MulticastServer import MulticastPingPong
 from twisted.internet.task import LoopingCall
 
 from utils import get_log_handler
@@ -44,7 +44,7 @@ class SplashWindow(QtGui.QWidget):
 
         # Multicast Server
         self._pingpong = MulticastPingPong()
-        port = MULTICAST_ADDR[1]
+        port = MulticastPingPong.MULTICAST_ADDR[1]
 
         reactor.listenMulticast(port, self._pingpong, listenMultiple=True)
         reactor.runReturn()
