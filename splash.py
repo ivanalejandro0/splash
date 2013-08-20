@@ -8,6 +8,7 @@ from MulticastServer import MulticastPingPong
 from twisted.internet.task import LoopingCall
 
 from utils import get_log_handler
+from actions import Actions
 logger = get_log_handler(__name__)
 
 from ui.ui_splash import Ui_SplashWindow
@@ -39,6 +40,9 @@ class SplashWindow(QtGui.QWidget):
         self._loop_refresh = LoopingCall(self.refresh_nodes)
         self.toggle_autorefresh()
 
+        # Action processor
+        self._actions = Actions()
+
     def _start_listening(self):
         from twisted.internet import reactor
 
@@ -48,8 +52,10 @@ class SplashWindow(QtGui.QWidget):
 
         reactor.listenMulticast(port, self._pingpong, listenMultiple=True)
         reactor.runReturn()
+
+        # Connect the multicast server signals with the app.
         self._pingpong.got_client.connect(self.add_node)
-        self._pingpong.got_message.connect(self.display_incoming_message)
+        self._pingpong.got_data.connect(self.parse_incoming_data)
 
     def toggle_autorefresh(self):
         """
@@ -64,7 +70,11 @@ class SplashWindow(QtGui.QWidget):
 
     def add_node(self, ip, port):
         """
-        Add a node to the list.
+        SLOT
+        TRIGGERS:
+            self._pingpong.got_client
+
+        Adds a node to the list.
 
         :param node: a nodes to add.
         :type node: tuple(str, int)
@@ -93,8 +103,8 @@ class SplashWindow(QtGui.QWidget):
         response, ok = QtGui.QInputDialog.getText(None, title, question)
         return response, ok
 
-    def display_incoming_message(self, msg):
-        QtGui.QMessageBox.information(self, 'Incoming Message', msg)
+    def display_data(self, data):
+        QtGui.QMessageBox.information(self, 'Incoming Data', data)
 
     def on_item_doubleclicked(self, item):
         node = item.text()
@@ -106,13 +116,22 @@ class SplashWindow(QtGui.QWidget):
         question = 'Input the message to send to the node'
         msg, ok = self.ask_user('Input message', question)
         if ok:
-            self._pingpong.send_message(msg, address)
+            self._pingpong.send_data(msg, address)
 
-    def add_demo_nodes(self):
-        demo_nodes = ['Demo node 01', 'Demo node 02', 'Demo node 03',
-                      'Demo node 04', 'Demo node 05']
-        for node in demo_nodes:
-            self.add_node(node)
+    def parse_incoming_data(self, data):
+        """
+        SLOT
+        TRIGGERS:
+            self._pingpong.got_data
+
+        It process the data received from a peer.
+
+        :param data: the data that we received and need to process.
+        :type data: str
+        """
+        if self._actions.run(data) is None:
+            # If there is no action to process, then display the data received.
+            self.display_data(data)
 
     def closeEvent(self, e):
         """

@@ -12,14 +12,14 @@ class ClientEmitter(QtCore.QObject):
     use multiple inheritance mixing twisted's classes and PySide ones.
     """
     got_client = QtCore.Signal(str, int)
-    got_message = QtCore.Signal(str)
+    got_data = QtCore.Signal(str)
 
 
 class MulticastPingPong(DatagramProtocol):
     MULTICAST_ADDR = ('228.0.0.5', 8005)
     CMD_PING = "PING"
     CMD_PONG = "PONG"
-    CMD_MSG = "MSG:"
+    CMD_DATA = "DATA:"
 
     def __init__(self):
         self._client_emitter = ClientEmitter()
@@ -50,34 +50,40 @@ class MulticastPingPong(DatagramProtocol):
         elif datagram.startswith(self.CMD_PONG):
             # someone reply to our publish message
             self.got_client.emit(address[0], address[1])
-        elif datagram.startswith(self.CMD_MSG):
+        elif datagram.startswith(self.CMD_DATA):
             # someone sent us a message
-            msg = datagram.lstrip(self.CMD_MSG)
-            self.got_message.emit(msg)
+            data = datagram.lstrip(self.CMD_DATA)
+            self.got_data.emit(data)
 
-    def send_message(self, message, addr=None):
+    def send_data(self, data, addr=None):
         """
-        Helper to send a message.
+        Helper to send data.
         If we do not supply an address, it will be send to everybody.
         """
         if addr is None:
             addr = self.MULTICAST_ADDR
 
-        message = self.CMD_MSG + message
-        self.transport.write(message, addr)
+        data = self.CMD_DATA + data
+        self.transport.write(data, addr)
 
     @property
     def got_client(self):
+        """
+        Helper to forward the emitter's signal.
+        """
         return self._client_emitter.got_client
 
     @property
-    def got_message(self):
-        return self._client_emitter.got_message
+    def got_data(self):
+        """
+        Helper to forward the emitter's signal.
+        """
+        return self._client_emitter.got_data
 
 
 if __name__ == '__main__':
-    # We use listenMultiple=True so that we can run MulticastServer.py and
-    # MulticastClient.py on same machine:
+    # We use listenMultiple=True so that we can run multiple instances
+    # on same machine.
     from twisted.internet import reactor
 
     reactor.listenMulticast(8005, MulticastPingPong(),
