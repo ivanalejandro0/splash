@@ -3,15 +3,18 @@
 import sys
 import signal
 
-from PySide import QtGui
-from MulticastServer import MulticastPingPong
+from PySide import QtCore, QtGui
+
+from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 
+from MulticastServer import MulticastPingPong
 from utils import get_log_handler
 from actions import Actions
-logger = get_log_handler(__name__)
 
 from ui.ui_splash import Ui_SplashWindow
+
+logger = get_log_handler(__name__)
 
 
 class SplashWindow(QtGui.QWidget):
@@ -44,14 +47,11 @@ class SplashWindow(QtGui.QWidget):
         self._actions = Actions()
 
     def _start_listening(self):
-        from twisted.internet import reactor
-
         # Multicast Server
         self._pingpong = MulticastPingPong()
         port = MulticastPingPong.MULTICAST_ADDR[1]
 
         reactor.listenMulticast(port, self._pingpong, listenMultiple=True)
-        reactor.runReturn()
 
         # Connect the multicast server signals with the app.
         self._pingpong.got_client.connect(self.add_node)
@@ -137,7 +137,6 @@ class SplashWindow(QtGui.QWidget):
         """
         Reimplementation of closeEvent to add actions before quit.
         """
-        from twisted.internet import reactor
         reactor.stop()
         logger.debug('Quit app')
         QtGui.QMainWindow.closeEvent(self, e)
@@ -146,14 +145,13 @@ class SplashWindow(QtGui.QWidget):
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
-    # Install the reactor (twisted <-> qt)
-    import qt4reactor
-    qt4reactor.install()
-
     window = SplashWindow()
     window.show()
 
     # Ensure that the application quits using CTRL-C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    sys.exit(app.exec_())
+    # Use twisted's reactor to call the Qt's event processor
+    l = LoopingCall(QtCore.QCoreApplication.processEvents, 0, 10)
+    l.start(0.01)
+    reactor.run()
