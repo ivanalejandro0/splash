@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# encoding: utf-8
 from PySide import QtCore
 from twisted.internet.protocol import DatagramProtocol
 
